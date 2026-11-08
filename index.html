@@ -753,11 +753,11 @@ function rockStep(s,t){const beat=s/2,b=Math.floor((beat-ROCK.intro)/4),q=s%8;
  if(cho){if(q===0)chord(t,r,RSPB*1.6,.06);else chord(t,r,RSPB*.38,.045)}else chord(t,r,RSPB*.22,.05);
  tone(MUSBUS,t,{type:'triangle',f:r,dur:RSPB*.45,vol:.14});tone(MUSBUS,t,{type:'square',f:r,dur:RSPB*.4,vol:.03});
  if(cho&&s%2===0){const f=NOTE(LEAD[b%4][q>>1]);tone(MUSBUS,t,{type:'square',f,dur:RSPB*.9,vol:.035});tone(MUSBUS,t,{type:'square',f:f*1.006,dur:RSPB*.8,vol:.02})}}
-ENTER.rockIntro=()=>{proj=[];lasers=[];zay=[];bullets=[];S.cine=null;Object.assign(hero,{state:'move',x:70,y:GR,vx:0,vy:0,face:1,onGround:true,inv:0,atk:null});boss.x=258;boss.face=-1;boss.state='beaten';music('none')};
+ENTER.rockIntro=()=>{if(!boss)boss=newBoss2('DEEL');proj=[];lasers=[];zay=[];bullets=[];S.cine=null;Object.assign(hero,{state:'move',x:70,y:GR,vx:0,vy:0,face:1,onGround:true,inv:0,atk:null});boss.x=258;boss.face=-1;boss.state='beaten';music('none')};
 UPD.rockIntro=dt=>{boss.st+=dt;if(S.t>6.2)go('rock')};
 ACT.rockIntro=k=>{if(S.t>1.2&&menuKey(k))go('rock')};
 DRAW.rockIntro=()=>{deelBG(true);drawEnemy(boss);drawHero();if(S.t>2.6)drawGuitar();talk(DEEL_END,S.t-.4)};
-ENTER.rock=()=>{ac();if(AC&&AC.state!=='running')try{AC.resume()}catch(e){}rockBus();RK={notes:rockChart(),useAudio:false,a0:0,g0:0,t0:S.T,started:false,step:0,hits:0,zaps:[],done:null};music('none')};
+ENTER.rock=()=>{if(!boss){boss=newBoss2('DEEL');boss.x=258;boss.face=-1;boss.state='beaten'}ac();if(AC&&AC.state!=='running')try{AC.resume()}catch(e){}rockBus();RK={notes:rockChart(),useAudio:false,a0:0,g0:0,t0:S.T,started:false,step:0,hits:0,zaps:[],done:null};music('none')};
 const rkLat=()=>AC?(AC.outputLatency||AC.baseLatency||0):0;
 const rkNow=()=>!RK.started?-9:RK.useAudio?AC.currentTime-RK.a0-rkLat():S.T-RK.g0;
 UPD.rock=dt=>{boss.st+=dt;hero.st+=dt;guideHintTick();
