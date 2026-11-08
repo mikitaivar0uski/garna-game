@@ -329,9 +329,9 @@ function hud(title){l.fillStyle='#0a0c06';l.fillRect(5,5,64,7);for(let i=0;i<her
 
 /* ----- backgrounds ----- */
 const BILL=['GARNA','EOR','PAYROLL','CoR','150+'];
-function cityBG(sky='#16213a'){l.fillStyle='#0a0c06';l.fillRect(0,0,320,180);l.fillStyle=sky;l.fillRect(0,26,320,128);
+function cityBG(sky='#16213a',moon=true){l.fillStyle='#0a0c06';l.fillRect(0,0,320,180);l.fillStyle=sky;l.fillRect(0,26,320,128);
  const R=rng(5);for(let i=0;i<40;i++){const x=((R()*400-camX*.05)%400+400)%400-40,y=R()*70|0;l.fillStyle=R()<.3?'#a5ea16':'#6b7360';l.fillRect(x|0,y,1,1)}
- l.fillStyle='#e8ffc4';l.beginPath();l.arc(262-camX*.04,30,10,0,Math.PI*2);l.fill();
+ if(moon){l.fillStyle='#e8ffc4';l.beginPath();l.arc(262-camX*.04,30,10,0,Math.PI*2);l.fill()}
  for(const[par,col,win,hmin,hmax,seed]of[[.25,'#1c2114','#353b2b',30,72,11],[.55,'#2c3d10','#6f9a14',20,64,23]]){const off=camX*par,k0=Math.floor(off/34)-1;for(let k=k0;k<k0+12;k++){const R2=rng(k*31+seed),w=22+R2()*16|0,h=hmin+R2()*(hmax-hmin)|0,x=Math.round(k*34-off);l.fillStyle=col;l.fillRect(x,GR-h,w,h);l.fillStyle=win;for(let wy=GR-h+4;wy<GR-6;wy+=6)for(let wx=x+3;wx<x+w-3;wx+=5)if(R2()<.35)l.fillRect(wx,wy,2,3);
    if(par>.5&&((k%5)+5)%5===0){const bt=BILL[((k/5|0)%5+5)%5],bw=bt.length*8+6;l.fillStyle='#0a0c06';l.fillRect(x+1,GR-h-14,bw+2,11);l.fillStyle='#a5ea16';l.fillRect(x+2,GR-h-13,bw,9);pix(l,bt,x+2+bw/2,GR-h-12,'#0a0c06','center',false)}}}
  l.fillStyle='#353b2b';l.fillRect(0,GR,320,26);l.fillStyle='#a5ea16';l.fillRect(0,GR,320,1);l.fillStyle='#1c2114';const o=Math.round(camX)%16;for(let x=-o;x<320;x+=16)l.fillRect(x,GR+1,1,25);l.fillRect(0,GR+12,320,1);
@@ -359,7 +359,7 @@ function card(lines,y0=30){const h=lines.length*13+12;l.fillStyle='#0a0c06';l.fi
 const menuKey=k=>['J','K','B','SP','U'].includes(k);
 ENTER.title=()=>{camX=0;lock=null;resetHero(-40);music('street')};
 UPD.title=dt=>{hero.state='move';hero.onGround=true;hero.vx=70;hero.x+=70*dt;hero.ph+=dt*10;if(hero.x>360)hero.x=-30;if(Math.floor(S.T*.7)%3===2&&hero.st>.5){hero.st=0}};
-DRAW.title=()=>{cityBG();const ox=160-380*.18;drawLetters(l,ox,82,.18,'#ffffff');drawG(l,{x:ox,y:82,s:.18,col:'#ffffff',pupil:'#a5ea16',angry:1});
+DRAW.title=()=>{cityBG('#16213a',false);const ox=160-380*.18;drawLetters(l,ox,82,.18,'#ffffff');drawG(l,{x:ox,y:82,s:.18,col:'#ffffff',pupil:'#a5ea16',angry:1});
  pix(l,'GARNA ЕСТ МИР',160,92,'#a5ea16','center');pix(l,'ИГРА ДЛЯ ВЛАДА',160,104,'#e8ffc4','center');if(Math.floor(S.T*2.5)%2===0)pix(l,'ЖМИ J ИЛИ УДАР',160,124,'#ffffff','center');drawHero()};
 ACT.title=k=>{if(menuKey(k)){sfx('start');go('intro1')}};
 ENTER.intro1=()=>{W=level1();camX=0;lock=null;waveI=0;spawnQ=[];enemies=[];proj=[];resetHero(40);music('street')};
