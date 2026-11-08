@@ -416,7 +416,7 @@ const ATK={
  bat:{dur:.54,a:.22,b:.3,dmg:3,kb:220,down:true,lunge:4,reach:36,y0:-50,y1:-4,keys:[[0,'batW'],[.4,'batW'],[.5,'bat'],[.75,'bat'],[1,'idle']],bat:true,pop:'ХРЯСЬ!',big:true,heavy:true},
  shoot:{dur:.24,a:.04,b:.04,keys:[[0,'aim'],[.3,'recoil'],[1,'aim']],gun:true}
 };
-const BULLET={dmg:2,kb:60,down:true,stun:.3,y0:-36,y1:-26,pop:'',type:'shoot'};
+const BULLET={dmg:2,kb:12,down:false,stun:.4,y0:-36,y1:-26,pop:'',type:'shoot'};
 const PRICES=['3%','2.5%','2%','1.5%','1%'];
 const SUPER={dmg:4,kb:150,down:true,launch:true,stun:.5,y0:-60,y1:10,pop:'',big:true,heavy:true,type:'super'};
 function startAtk(type){const h=hero,A=ATK[type];h.state='atk';h.st=0;h.atk=Object.assign({type,hit:new Set()},A);if(A.gun){sfx('shoot');bullets.push({x:h.x+h.face*14,y:h.y-31,vx:h.face*240,t0:S.T,vy:16,tag:PRICES[((S.priceI=(S.priceI|0)+1)-1)%PRICES.length]});h.ammo--;fx('flashm',{x:h.x+h.face*16,y:h.y-31})}else sfx(type==='bat'?'swingBig':'swing')}
@@ -431,7 +431,7 @@ function act(k){const h=hero;if(h.state==='hurt'||h.state==='eat'||h.state==='su
  if(k==='G'){if(h.state!=='move'&&!(h.state==='atk'&&h.atk.type==='shoot'&&h.st>.16))return;if(h.ammo<=0){sfx('click');pop('ПУСТО',h.x-camX,h.y-60,'#b8bfac',.5);return}startAtk('shoot');return}
  if(k==='X'){if(!ULT_OK.includes(S.st)||h.team<100||!['move','atk'].includes(h.state)||S.cine)return;startUlt('team');return}}
 function hurtHero(dmg,dir){const h=hero;if(h.inv>0||h.state==='eat'||h.state==='super'||h.hp<=0||!['s1','kleos','deel','train','end'].includes(S.st))return;h.hp-=dmg;if(S.st==='train'||S.st==='end')h.hp=Math.max(2,h.hp);h.inv=1.1;h.state='hurt';h.st=0;h.atk=null;h.vx=dir*120;h.vy=-130;h.onGround=false;S.freeze=.06;sfx('hurt');shake(4);pop('ОЙ!',h.x-camX,h.y-58);if(h.hp<=0){S.failed=S.st;setTimeout(()=>{if(hero.hp<=0)go('over')},500)}}
-const hittable=e=>['walk','wind','atk','hurt','tired','intro','dash','jump','cast','hover'].includes(e.state)||(e.state==='down'&&e.st<.18);
+const hittable=e=>['walk','wind','atk','hurt','tired','intro','dash','jump','cast','hover'].includes(e.state)||e.state==='down';
 function hitCheck(A){const h=hero;
  for(const e of enemies){if(A.hit.has(e)||!hittable(e))continue;const sc=e.sc||1,dx=(e.x-h.x)*h.face;if(dx<-6||dx>A.reach+6*sc)continue;const top=e.y-48*sc,bot=e.y,a0=h.y+A.y0,a1=h.y+A.y1;if(a1<top||a0>bot)continue;A.hit.add(e);applyHit(e,A,h.face);if(A.lunge&&!A.lunged){A.lunged=true;h.x+=h.face*A.lunge}}
  for(const p of proj){if(p.dead)continue;const dx=(p.x-h.x)*h.face;if(dx>-6&&dx<A.reach+4&&p.y>h.y+A.y0-4&&p.y<h.y+A.y1+4){p.dead=true;pop('+20',p.x-camX,p.y-8,'#a5ea16');S.score+=20;sfx('hit')}}
@@ -442,7 +442,7 @@ function applyHit(e,A,dir){const h=hero;let d=A.dmg;if(e.boss&&e.state==='tired'
  if(e.boss){const heavy=A.heavy||A.type==='super';if(e.state==='wind'&&heavy){e.state='tired';e.st=0;pop('КОНТРА!',e.x-camX,e.y-84,'#ffb020',1);S.score+=300}else if(heavy&&(e.state==='walk'||e.state==='tired')){if(e.state==='walk'){e.state='hurt';e.st=0}e.vx=dir*30}else if(!heavy){sfx('armor')}
   if(Math.random()<.18)say(e,pick(LINES[e.L.n].hurt));if(!e.rage&&e.hp<=e.maxHp/2&&e.hp>0){e.rage=true;sfx('rage');pop('ЯРОСТЬ!',e.x-camX,e.y-90,'#e2566f',1.2);say(e,pick(LINES[e.L.n].rage),1.6,true);shake(5)}if(e.hp<=0)ko(e);return}
  if(e.hp<=0){fillClaude(ULT.clRate);if(A.bat){e.state='dead';e.st=0;S.score+=300;fx('shards',{x:e.x,y:e.y-30,col:e.L.c,seed:(S.T*97)|0,dir,n:22});sfx('glass',.02);pop('ДЗЫНЬ!',e.x-camX,e.y-74,'#a5ea16',.8);drop(e)}else{e.state='dizzy';e.st=0;e.dizzyT=2.2;e.vx=dir*Math.min(60,A.kb);e.vy=-80;say(e,pick(LINES.dizzy),1.6,true)}return}
- if(A.down){e.state='down';e.st=0;e.vx=dir*A.kb;e.vy=A.launch?-170:-90}else{e.state='hurt';e.st=0;e.stunT=A.stun||.35;e.vx=dir*A.kb}
+ if(e.state==='down'&&!A.down){e.st=Math.min(e.st,.45);e.vy=e.onGround?-60:e.vy;e.vx=dir*15}else if(A.down){e.state='down';e.st=0;e.vx=dir*A.kb;e.vy=A.launch?-170:-90}else{e.state='hurt';e.st=0;e.stunT=A.stun||.35;e.vx=dir*A.kb}
  if(Math.random()<.2)say(e,pick(LINES[e.L.n].hurt))}
 function ko(b){if(b.L.n==='DEEL'){b.state='beaten';b.st=0;b.vx=0;sfx('ko');shake(6);S.flashT=S.T;pop('K.O.!',160,56,'#ffffff',1.6);S.score+=1000;return}b.state='dizzy';b.st=0;b.dizzyT=3.5;b.vx=0;sfx('ko');sfx('bell',.4);shake(6);pop('K.O.!',160,56,'#ffffff',1.6);S.score+=1000;}
 function drop(e){const r=Math.random();if(r<.3)W.items.push({x:e.x,y:GR-2,kind:'ammo'});else if(r<.45)W.items.push({x:e.x,y:GR-2,kind:'coffee'})}
