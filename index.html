@@ -731,7 +731,7 @@ ACT.deel=k=>act(k);
 
 /* ----- punk rock finale: letters A S D fly into the frames, every hit strikes Deel; the track is synthesized rock with distortion ----- */
 const DEEL_END=[['DEEL','НО МЫ ЖЕ ОГРОМНАЯ КОРПОРАЦИЯ, ВАМ НЕ ПОБЕДИТЬ!','#8b6bff'],['GARNA','С НАМИ СИЛА ПАНК-РОКА!','#a5ea16']];
-const ROCK={bpm:165,intro:8,bars:16,roots:[82.41,130.81,98.0,146.83],lanes:['L','D','R'],keys:['A','S','D'],cols:['#a5ea16','#ffb020','#3f82ff'],lx:[134,160,186],hy:134,px0:116,px1:204};
+const ROCK={bpm:165,intro:8,bars:16,roots:[82.41,130.81,98.0,146.83],lanes:['L','D','R'],keys:['A','S','D'],cols:['#a5ea16','#ffb020','#3f82ff'],lx:[134,160,186],hy:90,px0:116,px1:204};
 const RSPB=60/ROCK.bpm,RTOTAL=(ROCK.intro+ROCK.bars*4)*2;
 const LEAD=[['B4','G4','E4','G4'],['C5','G4','E4','G4'],['D5','B4','G4','B4'],['D5','A4','F#4','A4']];
 function rockChart(){const N=[],pat=[0,1,2,1];for(let b=0;b<ROCK.bars;b++){for(let q=0;q<4;q++){if(b<2&&q%2)continue;N.push({t:(ROCK.intro+b*4+q)*RSPB,lane:pat[(q+b)%4],res:null})}if(b>=8&&b%2===1)N.push({t:(ROCK.intro+b*4+3.5)*RSPB,lane:(b>>1)%3,res:null})}return N}
@@ -762,7 +762,7 @@ ENTER.rock=()=>{if(!boss){boss=newBoss2('DEEL');boss.face=-1}boss.x=262;boss.sta
 const rkLat=()=>AC?(AC.outputLatency||AC.baseLatency||0):0;
 const rkNow=()=>!RK.started?-9:RK.useAudio?AC.currentTime-RK.a0-rkLat():S.T-RK.g0;
 /* Deel does not just stand: he keeps walking at you, misses let him closer, hits push him back; every two bars he throws a lawsuit that a hit note knocks down */
-function rockHurt(){hero.hp=Math.max(1,hero.hp-1);hero.inv=.5;S.flashT=S.T;shake(5);sfx('hurt');pop('ОЙ!',hero.x-camX,hero.y-70,'#ffffff',.6)}
+function rockHurt(){hero.hp=Math.max(1,hero.hp-1);hero.inv=.5;shake(5);sfx('hurt');pop('ОЙ!',hero.x-camX,hero.y-70,'#ffffff',.6)}
 UPD.rock=dt=>{boss.st+=dt;hero.st+=dt;hero.inv=dec(hero.inv,dt);guideHintTick();
  if(!RK.started){if(AC&&AC.state==='running'&&!window.__noAudio){RK.useAudio=true;RK.a0=AC.currentTime+.3;RK.started=true}else if(S.T-RK.t0>.6){RK.g0=S.T+.3;RK.started=true}return}
  const now=rkNow();
@@ -793,12 +793,12 @@ DRAW.rock=()=>{const[sx,sy]=shakeOff();l.save();l.translate(sx,sy);deelBG(true);
  for(const d of RK.docs){const[x,y]=docPos(d).map(Math.round);l.fillStyle='#0a0c06';l.fillRect(x-15,y-9,30,18);l.fillStyle='#fff1e2';l.fillRect(x-14,y-8,28,16);pix(l,'ИСК',x,y-4,'#e2566f','center',false)}
  for(const z of RK.zaps){if(S.T-z.t0>.16)continue;const x0=Math.round(hero.x+hero.face*22),y0=Math.round(hero.y-38),x1=Math.round(z.tx??boss.x),y1=Math.round(z.ty??boss.y-52);l.strokeStyle=S.T-z.t0<.05?'#ffffff':ROCK.cols[z.lane];l.lineWidth=2;l.beginPath();l.moveTo(x0,y0);for(let s=1;s<=6;s++){const R=rng(z.t0*999+s);l.lineTo(lerp(x0,x1,s/6)+(s<6?(R()-.5)*14:0),lerp(y0,y1,s/6)+(s<6?(R()-.5)*14:0))}l.stroke()}
  drawBooms();drawFx();l.restore();
- if(!RK.done&&RK.started){l.fillStyle='rgba(10,12,6,.84)';l.fillRect(ROCK.px0,24,ROCK.px1-ROCK.px0,128);
+ if(!RK.done&&RK.started){l.fillStyle='rgba(10,12,6,.84)';l.fillRect(ROCK.px0,22,ROCK.px1-ROCK.px0,82);
   ROCK.lx.forEach((x,i)=>{l.fillStyle='#353b2b';l.fillRect(x,28,1,ROCK.hy-28);const lit=S.T-((RK.kf||[])[i]??-9)<.12||held[ROCK.lanes[i]];l.fillStyle=lit?ROCK.cols[i]:'#0a0c06';l.fillRect(x-9,ROCK.hy-9,19,19);l.strokeStyle=ROCK.cols[i];l.lineWidth=2;l.strokeRect(x-9,ROCK.hy-9,19,19);pix(l,ROCK.keys[i],x+1,ROCK.hy-3,lit?'#0a0c06':ROCK.cols[i],'center',false)});
-  for(const n of RK.notes){const y=Math.round(ROCK.hy-(n.t-now)*90);if(y<30||y>158||n.res==='perfect'||n.res==='ok')continue;noteTile(ROCK.lx[n.lane],y,n.lane,n.res==='miss')}
+  for(const n of RK.notes){const y=Math.round(ROCK.hy-(n.t-now)*58);if(y<30||y>112||n.res==='perfect'||n.res==='ok')continue;noteTile(ROCK.lx[n.lane],y,n.lane,n.res==='miss')}
   for(const z of RK.zaps){const a=S.T-z.t0;if(a<.2){l.strokeStyle='#ffffff';l.lineWidth=2;const r=10+a*40;l.strokeRect(ROCK.lx[z.lane]-r,ROCK.hy-r,r*2,r*2)}}
   const tip=RK.docs.length?'ИСК! ПОПАДИ В БУКВУ, ОТОБЬЁШЬ':now<ROCK.intro*RSPB+4?'ЖМИ A S D, КОГДА БУКВА В РАМКЕ':now<ROCK.intro*RSPB+8?'ПОПАДАЕШЬ: DEEL ОТСТУПАЕТ':'';if(tip)pix(l,tip,160,160,RK.docs.length?'#ffcf25':'#ffffff','center',true);
-  if(now<ROCK.intro*RSPB&&now>4*RSPB)pix(l,String(Math.max(1,ROCK.intro-Math.floor(now/RSPB))),160,70,'#ffcf25','center',true,24)}
+  if(now<ROCK.intro*RSPB&&now>4*RSPB)pix(l,String(Math.max(1,ROCK.intro-Math.floor(now/RSPB))),160,40,'#ffcf25','center',true,24)}
  const left=RK.done?0:clamp(1-RK.hits/(RK.notes.length*.7));pix(l,'DEEL',160,5,'#ffffff','center');l.fillStyle='#0a0c06';l.fillRect(104,13,112,6);l.fillStyle='#e2566f';l.fillRect(105,14,Math.round(110*left),4);
  pix(l,'SCORE '+String(S.score).padStart(6,'0'),6,6,'#e8ffc4');l.fillStyle='#0a0c06';l.fillRect(5,16,64,7);for(let i=0;i<hero.maxHp;i++){l.fillStyle=i<hero.hp?(hero.hp<=3?'#e2566f':'#a5ea16'):'#353b2b';l.fillRect(6+i*6,17,5,5)}};
 
