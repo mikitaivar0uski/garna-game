@@ -380,7 +380,11 @@ const TRAW={},TBUF={},TFAIL={};let TWANT=null,TCUR=null,TSRC=null,TGAIN=null;
 for(const[k,u]of Object.entries(TRACKS))fetch(u).then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(b=>{TRAW[k]=b;decodeTracks()}).catch(()=>{TFAIL[k]=true;if(TWANT===k)music(Object.keys(MUSIC_MAP).find(n=>MUSIC_MAP[n]===k))});
 function decodeTracks(){if(!AC)return;for(const k of Object.keys(TRAW)){const b=TRAW[k];delete TRAW[k];AC.decodeAudioData(b).then(d=>{TBUF[k]=d;if(TWANT===k&&TCUR!==k)playTrack(k)}).catch(()=>{TFAIL[k]=true})}}
 function stopTrack(fade=.08){if(TSRC&&AC){try{const t=AC.currentTime;TGAIN.gain.cancelScheduledValues(t);TGAIN.gain.setValueAtTime(TGAIN.gain.value,t);TGAIN.gain.linearRampToValueAtTime(0,t+fade);TSRC.stop(t+fade+.05)}catch(e){}}TSRC=null;TCUR=null}
-function playTrack(k,loop=true,when=0,vol=.6){TWANT=k;if(!AC||!TBUF[k])return false;stopTrack();const s=AC.createBufferSource(),g=AC.createGain();s.buffer=TBUF[k];s.loop=loop;g.gain.value=vol;s.connect(g);g.connect(MUSBUS);s.start(when||AC.currentTime);TSRC=s;TGAIN=g;TCUR=k;return true}
+let TFILT=null;
+function playTrack(k,loop=true,when=0,vol=.6){TWANT=k;if(!AC||!TBUF[k])return false;stopTrack();const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=20000;s.buffer=TBUF[k];s.loop=loop;g.gain.value=vol;s.connect(f);f.connect(g);g.connect(MUSBUS);s.start(when||AC.currentTime);TSRC=s;TFILT=f;TGAIN=g;TCUR=k;return true}
+/* rock finale feel: a hit on the beat pumps the track louder and fully open, a miss muffles it until the next hit */
+function trackHit(){if(!AC||!TGAIN||TCUR!=='rock')return;const t=AC.currentTime,g=TGAIN.gain,f=TFILT.frequency;g.cancelScheduledValues(t);g.setValueAtTime(1.05,t);g.linearRampToValueAtTime(.78,t+.32);f.cancelScheduledValues(t);f.setValueAtTime(f.value,t);f.setTargetAtTime(20000,t,.02)}
+function trackMiss(){if(!AC||!TGAIN||TCUR!=='rock')return;const t=AC.currentTime,g=TGAIN.gain,f=TFILT.frequency;f.cancelScheduledValues(t);f.setValueAtTime(f.value,t);f.setTargetAtTime(900,t,.05);g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.setTargetAtTime(.5,t,.06)}
 const trackReady=k=>!!TBUF[k];
 
 /* ================= game ================= */
@@ -775,9 +779,11 @@ ACT.rockIntro=k=>{if(S.t>1.2&&menuKey(k))go('rock')};
 DRAW.rockIntro=()=>{deelBG(true);drawEnemy(boss);drawHero();if(S.t>2.6)drawGuitar();talk(DEEL_END,S.t-.4)};
 /* recorded track: beats measured from the file (170 BPM, first beat at 0.34 s); notes on the beats, the player's hits play a distorted guitar lead in the track's notes (G A C E F) */
 const RREC={bpm:170,off:.3396,intro:8,bars:32},RRSPB=60/RREC.bpm;
-const LEADREC=[[196.0,220.0,174.6],[261.6,329.6,293.7],[392.0,349.2,440.0,523.3]];
+const LEADREC=[[98.0,87.31],[110.0,130.81],[164.81,196.0,174.61]];
 function rockChartRec(){const N=[],pat=[0,1,2,1];for(let b=0;b<RREC.bars;b++)for(let q=0;q<4;q++){if(b<8&&q%2)continue;N.push({t:RREC.off+(RREC.intro+b*4+q)*RRSPB,lane:pat[(q+b)%4],res:null,b})}return N}
-function guitarLead(f,t){const G=rockBus();if(!G)return;for(const[m,v]of[[1,.07],[1.006,.05],[2,.03]])tone(G,t,{type:'sawtooth',f:f*m,dur:.32,vol:v,a:.004});tone(MASTER,t,{type:'square',f,dur:.18,vol:.025})}
+let GTR=null;
+function gtrBus(){if(GTR||!AC)return GTR;const pre=AC.createGain();pre.gain.value=6;const ws=AC.createWaveShaper(),n=4096,cu=new Float32Array(n);for(let i=0;i<n;i++){const x=i*2/n-1;cu[i]=Math.tanh(x*9)*.9}ws.curve=cu;ws.oversample='4x';const hp=AC.createBiquadFilter();hp.type='highpass';hp.frequency.value=100;const mid=AC.createBiquadFilter();mid.type='peaking';mid.frequency.value=900;mid.Q.value=.8;mid.gain.value=5;const cab=AC.createBiquadFilter();cab.type='lowpass';cab.frequency.value=3400;cab.Q.value=.7;const cab2=AC.createBiquadFilter();cab2.type='lowpass';cab2.frequency.value=5200;const out=AC.createGain();out.gain.value=.24;pre.connect(ws);ws.connect(hp);hp.connect(mid);mid.connect(cab);cab.connect(cab2);cab2.connect(out);out.connect(MASTER);GTR=pre;return pre}
+function guitarHit(f,t){const G=gtrBus();if(!G)return;const env=AC.createGain();env.gain.setValueAtTime(0,t);env.gain.linearRampToValueAtTime(.5,t+.004);env.gain.setValueAtTime(.5,t+.3);env.gain.exponentialRampToValueAtTime(.001,t+.8);env.connect(G);const lfo=AC.createOscillator(),ld=AC.createGain();lfo.frequency.value=5.5;ld.gain.setValueAtTime(0,t);ld.gain.linearRampToValueAtTime(f*.012,t+.35);lfo.connect(ld);lfo.start(t);lfo.stop(t+.85);for(const[m,d,v]of[[1,1,.5],[1,1.004,.4],[1.5,1,.35],[2,1.002,.25]]){const o=AC.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(f*m*d,t);if(m===1)ld.connect(o.frequency);const g=AC.createGain();g.gain.value=v;o.connect(g);g.connect(env);o.start(t);o.stop(t+.85)}}
 ENTER.rock=()=>{if(!boss){boss=newBoss2('DEEL');boss.face=-1}boss.x=262;boss.state='walk';boss.vx=0;hero.hp=Math.max(hero.hp,6);ac();if(AC&&AC.state!=='running')try{AC.resume()}catch(e){}decodeTracks();rockBus();
  const rec=trackReady('rock');RK={rec,notes:rec?rockChartRec():rockChart(),spb:rec?RRSPB:RSPB,t0n:rec?RREC.off+RREC.intro*RRSPB:ROCK.intro*RSPB,endT:rec?RREC.off+(RREC.intro+RREC.bars*4)*RRSPB:RTOTAL*RSPB/2,
   useAudio:false,a0:0,g0:0,t0:S.T,started:false,step:0,hits:0,waves:[],docs:[],docBar:0,strikeT:-9,done:null};music('none')};
@@ -789,7 +795,7 @@ UPD.rock=dt=>{boss.st+=dt;hero.st+=dt;hero.inv=dec(hero.inv,dt);guideHintTick();
  if(!RK.started){if(AC&&AC.state==='running'&&!window.__noAudio){RK.useAudio=true;RK.a0=AC.currentTime+.3;RK.started=true;if(RK.rec&&!MUTED)playTrack('rock',false,RK.a0,.75)}else if(S.T-RK.t0>.6){RK.g0=S.T+.3;RK.started=true}return}
  const now=rkNow();
  if(RK.useAudio&&!RK.rec){const an=AC.currentTime-RK.a0;while(RK.step<=RTOTAL&&RK.step*RSPB/2<an+.2){if(!MUTED)rockStep(RK.step,RK.a0+RK.step*RSPB/2);RK.step++}}
- for(const n of RK.notes)if(!n.res&&n.t<now-.16){n.res='miss';boss.x-=9}
+ for(const n of RK.notes)if(!n.res&&n.t<now-.16){n.res='miss';boss.x-=9;trackMiss()}
  const songOn=!RK.done&&now>RK.t0n&&now<RK.endT;
  if(songOn){if(S.T-RK.strikeT>.35){boss.state='walk';boss.vx=-12;boss.x-=7*dt;boss.ph+=dt*6}
   if(boss.x<hero.x+46){boss.state='atk';boss.st=0;RK.strikeT=S.T;rockHurt();boss.x=hero.x+120}
@@ -804,7 +810,7 @@ const docPos=d=>{const k=clamp((S.T-d.t0)/1.9);return[lerp(d.x0,hero.x+8,k),lerp
 ACT.rock=k=>{if(!RK||!RK.started||RK.done)return;const lane=ROCK.lanes.indexOf(k);if(lane<0)return;RK.kf=RK.kf||[];RK.kf[lane]=S.T;const now=rkNow();let best=null,bd=.15;for(const n of RK.notes){if(n.res||n.lane!==lane)continue;const d=Math.abs(n.t-now);if(d<bd){bd=d;best=n}}
  if(!best){sfx('click');return}best.res=bd<.06?'perfect':'ok';RK.hits++;S.score+=best.res==='perfect'?300:150;boss.x+=5;
  const doc=RK.docs.find(d=>!d.dead);if(doc){doc.dead=true;const[dx,dy]=docPos(doc);RK.waves.push({t0:S.T,lane,tx:dx,ty:dy,doc:true});pop('ОТБИТО!',dx-camX,dy-14,'#a5ea16',.6);S.score+=200}else RK.waves.push({t0:S.T,lane});
- if(AC&&!MUTED){let f;if(RK.rec){const row=LEADREC[lane];f=row[((best.b||0)+RK.hits)%row.length]}else{const r=ROCK.roots[((Math.floor((best.t/RSPB-ROCK.intro)/4)%4)+4)%4];f=r*[4,6,8][lane]}guitarLead(f,AC.currentTime+.005)}
+ if(AC&&!MUTED){let f;if(RK.rec){const row=LEADREC[lane];f=row[((best.b||0)+RK.hits)%row.length]}else{const r=ROCK.roots[((Math.floor((best.t/RSPB-ROCK.intro)/4)%4)+4)%4];f=r*[1,1.5,2][lane]}guitarHit(f,AC.currentTime+.003)}trackHit();
  pop(best.res==='perfect'?'ОГОНЬ!':'ОК',ROCK.lx[lane],ROCK.hy-20,ROCK.cols[lane],.4)};
 function drawGuitar(){const h=hero,x=Math.round(h.x-camX),y=Math.round(h.y),f=h.face,bob=RK&&RK.started?Math.floor(Math.max(0,rkNow())/((RK&&RK.spb)||.35)*2)%2:Math.floor(S.T*5)%2;
  l.strokeStyle='#0a0c06';l.lineWidth=3;l.beginPath();l.moveTo(x+f*2,y-22+bob);l.lineTo(x+f*24,y-38+bob);l.stroke();l.strokeStyle='#cf8f4f';l.lineWidth=1;l.beginPath();l.moveTo(x+f*2,y-22+bob);l.lineTo(x+f*24,y-38+bob);l.stroke();
@@ -849,7 +855,7 @@ DRAW.map=()=>{const MX=6,MY=26,CS=3.4,t=S.t-.6,got=S.mapGot;l.fillStyle='#0a0c06
  if(got>=ORDER.length)pix(l,'ВЕСЬ МИР: GARNA',126,128,'#ffffff','center',true,16)};
 
 /* ----- the end: GG WP on top, endless free mode in the lower part ----- */
-const END_TXT=['С ДНЁМ РОЖДЕНИЯ!','ПУСКАЙ ВСЁ, ЧТО БЫЛО В МИНИ-ИГРЕ,','СБУДЕТСЯ)))'];
+const END_TXT=['С ДНЁМ РОЖДЕНИЯ!!!','ПУСКАЙ ВСЁ, ЧТО БЫЛО В МИНИ-ИГРЕ,','СБУДЕТСЯ)))'];
 function bestScore(v){try{if(v!=null){localStorage.setItem('garna_best',String(v));return v}return+(localStorage.getItem('garna_best')||0)}catch(e){return 0}}
 ENTER.end=()=>{camX=0;lock=0;W={w:320,plats:[],coins:[],items:[],waves:[],end:1e9,door:0};enemies=[];proj=[];bullets=[];falls=[];lasers=[];zay=[];boss=null;S.cine=null;const am=hero.ammo;resetHero(160);hero.ammo=Math.max(am,30);
  Object.assign(ULT,{showCl:true,showTeam:true,clRate:34,teamRate:4,teamCap:100});S.best=Math.max(bestScore(),S.score);S.spawnT=2;sfx('bday',.3);music('finale')};
@@ -858,7 +864,7 @@ UPD.end=dt=>{updHero(dt);S.spawnT-=dt;const live=enemies.filter(e=>!['eaten','de
 ACT.end=k=>{if(k==='RS'){bestScore(Math.max(S.best||0,S.score));S.score=0;hero.team=0;hero.claude=0;hero.ammo=12;go('title');return}act(k)};
 DRAW.end=()=>{const[sx,sy]=shakeOff();l.save();l.translate(sx,sy);cityBG('#16213a',true);for(const e of enemies)drawEnemy(e);drawProj();drawHero();drawBooms();drawFx();drawUlt();l.restore();
  l.fillStyle='rgba(10,12,6,.9)';l.fillRect(0,0,320,60);const R=rng(5);for(let i=0;i<40;i++){const x=(R()*340+Math.sin(S.T*2+i)*6)|0,y=((R()*60+S.T*(10+R()*20))%60)|0;l.fillStyle=['#ffffff','#a5ea16','#ffb020','#e2566f','#3f82ff'][i%5];l.fillRect(x,y,2,2)}
- const k=eob(clamp(S.t/.5));l.save();l.translate(160,13);l.scale(k,k);pix(l,'GG WP GARNA SOLO',0,-8,'#a5ea16','center',true,16);l.restore();
+ const k=eob(clamp(S.t/.5));l.save();l.translate(160,13);l.scale(k,k);pix(l,'GG WP VLAD',0,-8,'#a5ea16','center',true,16);l.restore();
  END_TXT.forEach((s,i)=>{if(S.t>.5+i*.4)pix(l,s,160,26+i*10,i===0?'#ffffff':'#e8ffc4','center',true)});l.fillStyle='#a5ea16';l.fillRect(0,60,320,1);
  l.fillStyle='#0a0c06';l.fillRect(5,64,64,7);for(let i=0;i<hero.maxHp;i++){l.fillStyle=i<hero.hp?'#a5ea16':'#353b2b';l.fillRect(6+i*6,65,5,5)}ultBar(5,73,'B',hero.claude,'#d97757');ultBar(5,86,'X',hero.team,'#f0c12c');
  pix(l,'SCORE '+String(S.score).padStart(6,'0'),314,64,'#e8ffc4','right');pix(l,'ЛУЧШИЙ '+String(S.best||0).padStart(6,'0'),314,74,'#a5ea16','right');pix(l,'R: ЗАНОВО',314,84,'#b8bfac','right');ultHints()};
